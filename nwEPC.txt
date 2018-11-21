@@ -1,0 +1,103 @@
+nwEPC---EPC-SAE-Gateway编译、安装与移植
+
+说明：
+    nwEPC---EPC-SAE-Gateway需要libevent的支持，要求libevent版本为1.4。
+尝试使用rpm和yum方式安装都不行，必须使用源码编译安装。正好我们要进行移植，所以，就
+都采用源码进行安装。	
+一、libevent的安装与配置
+1、下载源码文件libevent-release-1.4.15-stable.tar.gz，并解压。
+2、cd libevent-release-1.4.15-stable/执行sh autogen.sh 
+3、配置编译./configure && make
+4、sudo make install执行安装，安装完成后，会在/usr/local/include中新增event.h evhttp.h evdns.h evrpc.h evutil.h等头文件。
+5、执行 make verify进行验证安装，正常情况下会输出如下打印：
+cd test && make verify
+make[1]: Entering directory `/home/wengtongjiu/libevent-release-1.4.15-stable/test'
+Running tests:
+KQUEUE
+Skipping test
+DEVPOLL
+Skipping test
+POLL
+ test-eof: OKAY
+ test-weof: OKAY
+ test-time: OKAY
+ regress: type: 1, count: 1, ttl: 600: 104.197.149.9 type: 3, count: 2, ttl: 600: 2606:4700:10::6814:155 2606:4700:10::6814:55 type: 2, count: 1, ttl: 600: localhost (4.7 us/add) OKAY
+SELECT
+ test-eof: OKAY
+ test-weof: OKAY
+ test-time: OKAY
+ regress: type: 1, count: 1, ttl: 574: 104.197.149.9 type: 3, count: 2, ttl: 600: 2606:4700:10::6814:155 2606:4700:10::6814:55 type: 2, count: 1, ttl: 574: localhost (4.6 us/add) OKAY
+EPOLL
+ test-eof: OKAY
+ test-weof: OKAY
+ test-time: OKAY
+ regress: type: 1, count: 1, ttl: 548: 104.197.149.9 type: 3, count: 2, ttl: 600: 2606:4700:10::6814:55 2606:4700:10::6814:155 type: 2, count: 1, ttl: 548: localhost (4.3 us/add) OKAY
+EVPORT
+Skipping test
+make[1]: Leaving directory `/home/wengtongjiu/libevent-release-1.4.15-stable/test'
+
+二、nwEPC的安装与配置
+1、cd nwEPC---EPC-SAE-Gateway/，执行./configure
+2、make进行编译，编译成功后会在nw-mme-emu目录下生成nwLteMmeEmu可执行文件，在nw-sae-gw目录下生成nwLteSaeGw可执行文件。
+3、执行sudo make install进行安装，在/usr/local/bin/目录下会多出nwLteMmeEmu和nwLteSaeGw文件。
+4、nwLteMmeEmu的usage
+./nw-mme-emu/nwLteMmeEmu -h
+
+Supported command line arguments are:
+
++---------------------------+---------------+---------------------------------------+
+| ARGUMENT                  | PRESENCE      | DESCRIPTION                           |
++---------------------------+---------------+---------------------------------------+
+| --mme-ip | -mi            | MANDATORY     | IP address for the MME control plane. |
+| --sgw-ip | -si            | MANDATORY     | IP address of the target SGW.         |
+| --pgw-ip | -pi            | MANDATORY     | IP address of the target PGW.         |
+| --gtpu-ip | -gi           | MANDATORY     | IP address for the MME user plane.    |
+| --num-of-ue | -nu         | OPTIONAL      | Number of UEs to simulate.            |
+| --session-timeout | -st   | OPTIONAL      | UE session timeout in seconds.        |
+| --reg-per-sec| -rps       | OPTIONAL      | Session registrations per second.     |
+| --tun-if  | -si           | OPTIONAL      | Network interface name for tunnel-if. |
++---------------------------+---------------+---------------------------------------+
+
+Example Usage: 
+$ nwLteMmeEmu --mme-ip 10.0.0.1 --sgw-ip 10.0.0.2 --pgw-ip 10.0.0.3 --gtpu-ip 10.0.0.1 --tun-if eth1 -nu 50000 -st 120 -rps 100
+5、nwLteSaeGw的usage
+./nw-sae-gw/nwLteSaeGw -h
+
+Supported command line arguments are:
+
++----------------------+-------------+----------------------------------------+
+| ARGUMENT             | PRESENCE    | DESCRIPTION                            |
++----------------------+-------------+----------------------------------------+
+| --sgw-s11-ip | -ss11 | MANDATORY   | S11 control IP address of the SGW.     |
+| --sgw-s5-ip  | -ss5  | MANDATORY   | S5 control IP address of the SGW.      |
+| --sgw-s4-ip  | -ss4  | OPTIONAL    | S4 control IP address of the SGW.      |
+| --pgw-s5-ip  | -ps5  | MANDATORY   | S5 control IP address of the PGW.      |
+| --gtpu-ip    | -gi   | MANDATORY   | IP address for the GTPU User Plane.    |
+| --apn        | -ap   | MANDATORY   | Access Point Name to be served.        |
+| --ippool-subnet| -is | MANDATORY   | IPv4 address pool for UEs.             |
+| --ippool-mask | -im  | MANDATORY   | IPv4 address pool for UEs.             |
+| --sgi-if     | -si   | OPTIONAL    | Network interface name for the SGi.    |
+| --max-ue     | -mu   | OPTIONAL    | Maximum number of UEs to support.      |
+| --combined-gw | -cgw | OPTIONAL    | Combine SGW and PGW funtions.          |
++----------------------+-------------+----------------------------------------+
+
+Example Usage: 
+$ nwLteSaeGw --sgw-s11-ip 10.124.25.153 --sgw-s5-ip 192.168.0.1 --pgw-s5-ip 192.168.139.5 --gtpu-ip 10.124.25.153 --sgi-if eth0 --ippool-subnet 10.66.10.0 --ippool-mask 255.255.255.0 -cgw
+
+三、libevent的交叉编译
+1.配置交叉编译编译链和生成路径为/home/wengtongjiu/octeon-libevent，编译链使用mips64-octeon-linux-gnu系列。
+./configure --prefix=/home/wengtongjiu/octeon-libevent --host=mips64-octeon-linux-gnu CC=mips64-octeon-linux-gnu-gcc CXX=mips64-octeon-linux-gnu-g++
+2.编译
+make
+3.安装
+make install会在/home/wengtongjiu/octeon-libevent目录生成bin文件和include等文件目录。
+
+四、nwEPC的交叉编译
+1.配置交叉编译编译链和生成路径为/home/wengtongjiu/octeon-nwEPC，编译链使用mips64-octeon-linux-gnu系列，并使用步骤三中编译出来的libevent的库文件和头文件。
+LDFLAGS=-L/home/wengtongjiu/octeon-libevent/lib/ LDFLAGS必须使用=-L(dir)，dir是生成的octeon-libevent/lib
+CPPFLAGS=-I/home/wengtongjiu/octeon-libevent/include CPPFLAGS必须使用=-I(dir),dir是生成的octeon-libevent/include
+配置命令如下：
+./configure --prefix=/home/wengtongjiu/octeon-nwEPC --host=mips64-octeon-linux-gnu CC=mips64-octeon-linux-gnu-gcc CXX=mips64-octeon-linux-gnu-g++ LDFLAGS=-L/home/wengtongjiu/octeon-libevent/lib/ CPPFLAGS=-I/home/wengtongjiu/octeon-libevent/include
+
+2、make进行编译，编译成功后会在nw-mme-emu目录下生成nwLteMmeEmu可执行文件，在nw-sae-gw目录下生成nwLteSaeGw可执行文件。
+3、执行make install进行安装，在/home/wengtongjiu/octeon-nwEPC/bin/目录下会生成nwLteMmeEmu和nwLteSaeGw文件。
